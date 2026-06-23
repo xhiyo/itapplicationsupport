@@ -23,7 +23,7 @@ function App() {
   });
   
   const [language, setLanguage] = useState(() => {
-    return localStorage.getItem('language') || 'Indonesia';
+    return localStorage.getItem('language') || 'Inggris';
   });
 
   useEffect(() => {
