@@ -256,12 +256,12 @@ export default function LaporkanKendala({ setActivePage, globalSearchTerm }) {
             </div>
 
             <div className="flex w-full md:w-auto items-center gap-2">
-            <button onClick={handleRefresh} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-all">
-              <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} /> {t('Refresh Data')}
-            </button>
-            <button onClick={() => { setEditingTicket(null); setIsModalOpen(true); }} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-sm shadow-blue-600/20 transition-all">
-              <Plus size={18} strokeWidth={2.5} /> {t('Buat Tiket Baru')}
-            </button>
+              <button onClick={handleRefresh} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-all">
+                <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} /> {t('Refresh Data')}
+              </button>
+              <button onClick={() => { setEditingTicket(null); setIsModalOpen(true); }} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-sm shadow-blue-600/20 transition-all">
+                <Plus size={18} strokeWidth={2.5} /> {t('Buat Tiket Baru')}
+              </button>
             </div>
           </div>
 
@@ -377,7 +377,7 @@ export default function LaporkanKendala({ setActivePage, globalSearchTerm }) {
               </div>
 
               <div className="relative min-w-[150px]">
-                <select 
+                <select
                   value={picFilter}
                   onChange={(e) => setPicFilter(e.target.value)}
                   className="appearance-none w-full pl-9 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 focus:border-blue-500 focus:bg-white outline-none cursor-pointer"
