@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, Sparkles, Loader2 } from 'lucide-react';
+import { Bot, X, Send, MessageCircle, Loader2 } from 'lucide-react';
 import { getDailyTasks, getPicIt } from '../services/api';
 
 const API_KEY = "sk-ws-H.HPRPEP.TAD5.MEUCIQCTrO8Io7ks90t5vzikb_TEOunLt7_M-Wq3dHkOGBe0AgIgeCc0iMyi8-KxHzieHGMDkXP1hxm5cNhvNmWDMs9t8I4";
@@ -98,10 +98,16 @@ function AgentAssistant({ activePage }) {
         }
     }, [messages]);
 
-    const handleSend = async () => {
-        if (!input.trim()) return;
+    const quickPrompts = [
+        "Ringkasan tiket hari ini",
+        "Berapa tiket High Priority?",
+        "Tampilkan status PIC IT"
+    ];
 
-        const userMsg = input.trim();
+    const handleSend = async (textToSend) => {
+        const userMsg = (typeof textToSend === 'string' ? textToSend : input).trim();
+        if (!userMsg) return;
+
         setInput('');
         setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
         setIsLoading(true);
@@ -165,86 +171,138 @@ function AgentAssistant({ activePage }) {
     };
 
     return (
-        <div className="relative">
-            {/* Tombol Agent Assistant di Kanan Atas */}
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-4 py-2 rounded-xl shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5"
-            >
-                <Sparkles size={18} className="animate-pulse" />
-                <span className="font-semibold text-sm">AI Agent</span>
-            </button>
+        <>
+            {/* Tombol Agent Assistant di Kanan Atas (ketika tertutup) */}
+            <div className="relative z-50">
+                <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-full shadow-lg border border-slate-700 transition-all hover:scale-105 active:scale-95"
+                >
+                    <MessageCircle size={18} />
+                    <span className="font-semibold text-sm">Ask AI</span>
+                </button>
+            </div>
 
-            {/* Panel Chatbot */}
+            {/* Sidebar Chatbot Overlay & Panel */}
             {isOpen && (
-                <div className="absolute top-14 right-0 w-[400px] h-[550px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col z-[200] overflow-hidden animate-in slide-in-from-top-4 fade-in duration-300">
-                    {/* Header Panel */}
-                    <div className="bg-gradient-to-r from-violet-600 to-indigo-600 p-4 flex justify-between items-center text-white shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-white/20 p-2 rounded-lg">
-                                <Bot size={20} />
+                <div className="fixed inset-0 z-[200] flex justify-end">
+                    {/* Backdrop */}
+                    <div 
+                        className="absolute inset-0 bg-slate-900/10 backdrop-blur-[2px] animate-in fade-in duration-300"
+                        onClick={() => setIsOpen(false)}
+                    />
+
+                    {/* Sidebar Panel */}
+                    <div className="relative w-full max-w-[450px] h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200/80">
+                        
+                        {/* Header Panel (Minimalist) */}
+                        <div className="px-5 py-4 flex justify-between items-center border-b border-slate-100 shrink-0 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                            <div className="flex items-center gap-2.5">
+                                <div className="bg-blue-50 text-blue-600 p-1.5 rounded-md">
+                                    <Bot size={20} className="stroke-[2.5]" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-[15px] tracking-tight">Copilot Assistant</h3>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="font-bold text-sm">IT Support Agent</h3>
+                            <button
+                                onClick={() => setIsOpen(false)}
+                                className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Chat Area */}
+                        <div ref={chatContainerRef} className="flex-1 overflow-y-auto overscroll-contain px-5 py-6 space-y-6">
+                            {messages.map((msg, idx) => (
+                                <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    
+                                    {msg.role === 'assistant' && (
+                                        <div className="mr-3 shrink-0 mt-1">
+                                            <div className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center shadow-sm">
+                                                <Bot size={16} className="text-blue-600" />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className={`text-[14.5px] leading-relaxed ${msg.role === 'user'
+                                        ? 'bg-slate-100 text-slate-800 px-4 py-2.5 rounded-2xl rounded-tr-sm max-w-[85%]'
+                                        : 'text-slate-700 pt-1 w-full max-w-[90%]'
+                                        }`}>
+                                        {msg.content}
+                                    </div>
+                                </div>
+                            ))}
+                            
+                            {messages.length === 1 && (
+                                <div className="flex flex-wrap gap-2 mt-6 pl-11">
+                                    {quickPrompts.map((prompt, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => handleSend(prompt)}
+                                            className="text-[13px] font-medium bg-white text-slate-600 border border-slate-200 px-3.5 py-2 rounded-full hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
+                                        >
+                                            {prompt}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {isLoading && (
+                                <div className="flex w-full justify-start">
+                                    <div className="mr-3 shrink-0 mt-1">
+                                        <div className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center shadow-sm">
+                                            <Bot size={16} className="text-blue-600" />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-2.5">
+                                        <div className="w-1.5 h-1.5 bg-blue-600/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <div className="w-1.5 h-1.5 bg-blue-600/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <div className="w-1.5 h-1.5 bg-blue-600/80 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Input Area (Modern Prompt Bar) */}
+                        <div className="p-4 bg-white shrink-0 pb-6">
+                            <form
+                                onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+                                className="flex items-end gap-2 bg-slate-50 p-2 rounded-[24px] border border-slate-200 focus-within:border-slate-300 focus-within:bg-white focus-within:shadow-sm transition-all"
+                            >
+                                <textarea
+                                    ref={inputRef}
+                                    value={input}
+                                    disabled={isLoading}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            if (input.trim() && !isLoading) handleSend();
+                                        }
+                                    }}
+                                    placeholder="Message Copilot..."
+                                    className="flex-1 bg-transparent border-none outline-none px-3 py-2 text-[14.5px] text-slate-800 placeholder:text-slate-400 resize-none min-h-[44px] max-h-[120px] rounded-2xl"
+                                    rows={1}
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={isLoading || !input.trim()}
+                                    className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 text-white p-2.5 rounded-full transition-colors shrink-0 mb-0.5 mr-0.5"
+                                >
+                                    <Send size={18} className="ml-[1px]" />
+                                </button>
+                            </form>
+                            <div className="text-center mt-2.5">
+                                <p className="text-[10px] text-slate-400">AI can make mistakes. Verify important information.</p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => setIsOpen(false)}
-                            className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors"
-                        >
-                            <X size={18} />
-                        </button>
-                    </div>
-
-                    {/* Chat Area */}
-                    <div ref={chatContainerRef} className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4 bg-slate-50">
-                        {messages.map((msg, idx) => (
-                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] p-3 rounded-2xl text-sm whitespace-pre-wrap ${msg.role === 'user'
-                                    ? 'bg-blue-600 text-white rounded-tr-sm'
-                                    : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm'
-                                    }`}>
-                                    {msg.content}
-                                </div>
-                            </div>
-                        ))}
-                        {isLoading && (
-                            <div className="flex justify-start">
-                                <div className="bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-sm shadow-sm">
-                                    <Loader2 size={16} className="text-violet-600 animate-spin" />
-                                </div>
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} />
-                    </div>
-
-                    {/* Input Area */}
-                    <div className="p-3 bg-white border-t border-slate-100 shrink-0">
-                        <form
-                            onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                            className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200 focus-within:border-violet-300 focus-within:ring-2 focus-within:ring-violet-100 transition-all"
-                        >
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={input}
-                                disabled={isLoading}
-                                onChange={(e) => setInput(e.target.value)}
-                                placeholder="Tanyakan seputar data IT Support..."
-                                className="flex-1 bg-transparent border-none outline-none px-3 text-sm text-slate-700 placeholder:text-slate-400"
-                            />
-                            <button
-                                type="submit"
-                                disabled={isLoading || !input.trim()}
-                                className="bg-violet-600 hover:bg-violet-700 disabled:bg-slate-300 text-white p-2 rounded-lg transition-colors"
-                            >
-                                <Send size={16} />
-                            </button>
-                        </form>
                     </div>
                 </div>
             )}
-        </div>
+        </>
     );
 }
 

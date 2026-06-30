@@ -7,15 +7,29 @@ import PICIT from "./pages/pic-it";
 import KnowledgeBase from "./pages/knowledge-base";
 import LaporkanKendala from "./pages/laporkan-kendala";
 import TicketDetail from "./pages/ticket-detail";
-import Pengaturan from "./pages/pengaturan";
 import Laporan from "./pages/laporan";
+import Pengaturan from "./pages/pengaturan";
 import LandingPage from "./pages/landing-page";
+import ResetPassword from "./pages/auth/reset-password";
 import { LanguageProvider } from "./contexts/LanguageContext";
 
 function App() {
-  const [activePage, setActivePage] = useState("Landing");
+  // Auth State
+  const [auth, setAuth] = useState(() => {
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+    return token && user ? { token, user: JSON.parse(user) } : null;
+  });
+
+  const [activePage, setActivePage] = useState(() => {
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+    return token && user ? "Dashboard" : "Landing";
+  });
+
   const [globalSearchTerm, setGlobalSearchTerm] = useState("");
   const [showBell, setShowBell] = useState(true);
+  const [adminViewAs, setAdminViewAs] = useState('Semua PIC');
   
   // Theme State
   const [theme, setTheme] = useState(() => {
@@ -30,6 +44,11 @@ function App() {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
 
+    if (!auth) {
+      root.classList.add('light');
+      return;
+    }
+
     if (theme === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       root.classList.add(systemTheme);
@@ -37,7 +56,7 @@ function App() {
       root.classList.add(theme);
     }
     localStorage.setItem('theme', theme);
-  }, [theme]);
+  }, [theme, auth]);
 
   const renderPage = () => {
     if (activePage.startsWith("TicketDetail_")) {
@@ -46,14 +65,14 @@ function App() {
     }
 
     switch (activePage) {
-      case "Dashboard": return <Dashboard setActivePage={setActivePage} globalSearchTerm={globalSearchTerm} />;
-      case "PIC": return <PICIT />;
+      case "Dashboard": return <Dashboard setActivePage={setActivePage} globalSearchTerm={globalSearchTerm} adminViewAs={adminViewAs} setAdminViewAs={setAdminViewAs} />;
+      case "PIC": return <PICIT user={auth.user} />;
       case "Knowledge Base": return <KnowledgeBase />;
-      case "Tiket": return <LaporkanKendala setActivePage={setActivePage} globalSearchTerm={globalSearchTerm} />;
+      case "Tiket": return <LaporkanKendala setActivePage={setActivePage} globalSearchTerm={globalSearchTerm} user={auth.user} adminViewAs={adminViewAs} />;
       case "Recurring Task": return <div className="flex items-center justify-center h-full text-slate-500 font-medium">Halaman Recurring Task belum tersedia</div>;
-      case "Laporan": return <Laporan />;
+      case "Laporan": return <Laporan setActivePage={setActivePage} user={auth.user} adminViewAs={adminViewAs} />;
       case "Pengaturan": return <Pengaturan theme={theme} setTheme={setTheme} showBell={showBell} setShowBell={setShowBell} language={language} setLanguage={setLanguage} />;
-      default: return <Dashboard setActivePage={setActivePage} globalSearchTerm={globalSearchTerm} />;
+      default: return <Dashboard setActivePage={setActivePage} globalSearchTerm={globalSearchTerm} adminViewAs={adminViewAs} setAdminViewAs={setAdminViewAs} />;
     }
   };
 
@@ -65,17 +84,26 @@ function App() {
     return activePage;
   };
 
-  if (activePage === "Landing") {
+  if (!auth) {
+    if (activePage === "ResetPassword") {
+      return <ResetPassword setActivePage={setActivePage} />;
+    }
     return (
-      <>
-        <LandingPage onGetStarted={() => setActivePage("Dashboard")} />
-      </>
+      <LandingPage
+        onGetStarted={() => setActivePage("Dashboard")}
+        setAuth={(data) => {
+          setAuth(data);
+          setActivePage("Dashboard");
+        }}
+        isAuthenticated={!!auth}
+        setActivePage={setActivePage}
+      />
     );
   }
 
   return (
     <LanguageProvider currentLanguage={language}>
-      <Layout activePage={activePage} navbarTitle={getNavbarTitle()} setActivePage={setActivePage} globalSearchTerm={globalSearchTerm} setGlobalSearchTerm={setGlobalSearchTerm} showBell={showBell}>
+      <Layout activePage={activePage} navbarTitle={getNavbarTitle()} setActivePage={setActivePage} globalSearchTerm={globalSearchTerm} setGlobalSearchTerm={setGlobalSearchTerm} showBell={showBell} user={auth.user} setAuth={setAuth}>
           <div className="w-full h-full relative">
           {/* Biarkan Chatbot selalu di-render (tidak di-unmount) agar state/loading AI tetap berjalan di background */}
           <div className={`w-full h-full absolute inset-0 ${activePage === "Chatbot AI" ? "block z-10" : "hidden -z-10"}`}>

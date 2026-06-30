@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api';
+const API_URL = `http://${window.location.hostname}:5000/api`;
 
 // --- IN-MEMORY CACHE CORE ---
 // Memastikan data di-cache selama 1 menit untuk menghilangkan lag saat pindah halaman

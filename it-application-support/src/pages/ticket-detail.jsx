@@ -5,8 +5,8 @@ import { invalidateCache } from "../services/api";
 import { ArrowLeft, User as UserIcon, Paperclip, Calendar, Tag, ShieldAlert, X, ChevronLeft, ChevronRight, Download, Clock, FileText, Bookmark, Layers, Users, Hash, Info, Ticket as TicketIcon, CheckCircle2 } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 
-const API_URL = "http://localhost:5000/api/tickets";
-const UPLOADS_URL = "http://localhost:5000/uploads";
+const API_URL = `http://${window.location.hostname}:5000/api/tickets`;
+const UPLOADS_URL = `http://${window.location.hostname}:5000/uploads`;
 
 const getAvatarColor = (name) => {
     if (!name) return 'bg-blue-600';
@@ -37,6 +37,7 @@ export default function TicketDetail({ ticketId, goBack }) {
   const { t } = useLanguage();
   const [ticket, setTicket] = useState(null);
   const [attachments, setAttachments] = useState([]);
+  const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
 
@@ -63,12 +64,14 @@ export default function TicketDetail({ ticketId, goBack }) {
   useEffect(() => {
     const fetchTicketData = async () => {
       try {
-        const [ticketRes, attachRes] = await Promise.all([
+        const [ticketRes, attachRes, commentsRes] = await Promise.all([
           axios.get(`${API_URL}/${ticketId}`),
           axios.get(`${API_URL}/${ticketId}/attachments`),
+          axios.get(`${API_URL}/${ticketId}/comments`).catch(() => ({ data: [] }))
         ]);
         setTicket(ticketRes.data);
         setAttachments(attachRes.data);
+        setComments(commentsRes.data || []);
       } catch (error) {
         console.error("Error fetching ticket details:", error);
       } finally {
@@ -106,10 +109,9 @@ export default function TicketDetail({ ticketId, goBack }) {
   let mainDescription = ticket.description || "-";
   let solutionText = "";
 
-  const solutionMatch = mainDescription.match(/Solusi\s*:\s*([\s\S]*)$/i);
-  if (solutionMatch) {
-    solutionText = solutionMatch[1].trim();
-    mainDescription = mainDescription.replace(/Solusi\s*:\s*([\s\S]*)$/i, '').trim();
+  const resComment = comments.slice().reverse().find(c => c.comment_text && c.comment_text.includes('Solusi :'));
+  if (resComment) {
+    solutionText = resComment.comment_text.replace(/Solusi :\n?/, '').trim();
   }
 
   return (
@@ -133,9 +135,9 @@ export default function TicketDetail({ ticketId, goBack }) {
           <div className="flex flex-col gap-6 h-full">
 
             {/* Header Card */}
-            <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
+            <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-md border border-slate-200/80 dark:border-slate-700/50 shadow-sm">
               <div className="flex flex-col sm:flex-row gap-5">
-                <div className="w-16 h-16 bg-slate-50 dark:bg-slate-700/50 rounded-2xl flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+                <div className="w-16 h-16 bg-slate-50 dark:bg-slate-700/50 rounded-md flex items-center justify-center shrink-0 border border-slate-200/80 dark:border-slate-700">
                   <TicketIcon size={28} className="text-slate-500 dark:text-slate-400" />
                 </div>
                 <div className="flex flex-col gap-3 w-full">
@@ -187,9 +189,9 @@ export default function TicketDetail({ ticketId, goBack }) {
             </div>
 
             {/* Deskripsi Card */}
-            <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
+            <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-md border border-slate-200/80 dark:border-slate-700/50 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                <div className="w-10 h-10 rounded-[4px] bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
                   <FileText size={20} />
                 </div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('Deskripsi')}</h2>
@@ -205,9 +207,9 @@ export default function TicketDetail({ ticketId, goBack }) {
 
             {/* Solusi Card */}
             {isCompleted && (
-              <div className="bg-emerald-50 dark:bg-emerald-900/10 p-6 sm:p-8 rounded-2xl border border-emerald-200 dark:border-emerald-800/30 shadow-sm">
+              <div className="bg-emerald-50 dark:bg-emerald-900/10 p-6 sm:p-8 rounded-md border border-emerald-200 dark:border-emerald-800/30 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <div className="w-10 h-10 rounded-[4px] bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                     <CheckCircle2 size={20} />
                   </div>
                   <h2 className="text-lg font-bold text-emerald-900 dark:text-emerald-400">{t('Solusi')}</h2>
@@ -223,9 +225,9 @@ export default function TicketDetail({ ticketId, goBack }) {
             )}
 
             {/* Lampiran Card */}
-            <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm flex-1">
+            <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-md border border-slate-200/80 dark:border-slate-700/50 shadow-sm flex-1">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                <div className="w-10 h-10 rounded-[4px] bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
                   <Paperclip size={20} />
                 </div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('Lampiran')}</h2>
@@ -240,7 +242,7 @@ export default function TicketDetail({ ticketId, goBack }) {
                       const fileExt = att.file_name.split('.').pop().toUpperCase();
 
                       return (
-                        <div key={att.id} className="flex items-center gap-4 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-blue-300 dark:hover:border-blue-700 transition-colors group">
+                        <div key={att.id} className="flex items-center gap-4 p-3 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-[4px] hover:border-blue-300 dark:hover:border-blue-700 transition-colors group">
                           <div className="flex items-center gap-4 cursor-pointer flex-1 min-w-0" onClick={() => {
                             if (isImage) {
                               const idx = imageAttachments.findIndex(img => img.id === att.id);
@@ -249,7 +251,7 @@ export default function TicketDetail({ ticketId, goBack }) {
                               window.open(fileUrl, '_blank');
                             }
                           }}>
-                            <div className="w-12 h-12 bg-slate-50 dark:bg-slate-900 rounded-lg flex items-center justify-center overflow-hidden shrink-0 border border-slate-200 dark:border-slate-800 group-hover:border-blue-200 dark:group-hover:border-blue-800 transition-colors">
+                            <div className="w-12 h-12 bg-slate-50 dark:bg-slate-900 rounded-[4px] flex items-center justify-center overflow-hidden shrink-0 border border-slate-200/80 dark:border-slate-800 group-hover:border-blue-200 dark:group-hover:border-blue-800 transition-colors">
                               {isImage ? (
                                 <img src={fileUrl} alt={att.file_name} className="w-full h-full object-cover" />
                               ) : (
@@ -263,7 +265,7 @@ export default function TicketDetail({ ticketId, goBack }) {
                           </div>
                           <button
                             onClick={() => handleDownload(fileUrl, att.file_name)}
-                            className="p-2 mr-1 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 dark:bg-slate-700/50 dark:hover:bg-blue-900/30 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
+                            className="p-2 mr-1 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 dark:bg-slate-700/50 dark:hover:bg-blue-900/30 rounded-[4px] transition-colors border border-slate-200/80 dark:border-slate-700"
                             title="Unduh Lampiran"
                           >
                             <Download size={16} />
@@ -273,7 +275,7 @@ export default function TicketDetail({ ticketId, goBack }) {
                     })}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 italic bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 inline-block">{t('Tidak ada lampiran disertakan.')}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 italic bg-slate-50 dark:bg-slate-800/50 p-4 rounded-[4px] border border-slate-100 dark:border-slate-700/50 inline-block">{t('Tidak ada lampiran disertakan.')}</p>
                 )}
               </div>
             </div>
@@ -282,7 +284,7 @@ export default function TicketDetail({ ticketId, goBack }) {
 
           {/* RIGHT COLUMN: Sidebar Metadata */}
           <div className="flex flex-col gap-6">
-            <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm sticky top-6">
+            <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-md border border-slate-200/80 dark:border-slate-700/50 shadow-sm sticky top-6">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">{t('Informasi Ticket')}</h3>
 
               <div className="space-y-1">

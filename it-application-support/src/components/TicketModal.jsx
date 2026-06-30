@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Bot, Trash2, ChevronDown } from 'lucide-react';
 import axios from 'axios';
 import heic2any from 'heic2any';
-export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pics = [] }) {
+export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pics = [], currentUser, isAdminUser }) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [layanan, setLayanan] = useState('365');
@@ -47,13 +47,24 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
             setLayanan('365');
             setPriority('Low');
             setStatus('To Do');
-            setPicId('');
+            
+            if (!isAdminUser && currentUser?.name && pics.length > 0) {
+                const userPic = pics.find(p => p.pic_name === currentUser.name);
+                if (userPic) {
+                    setPicId(userPic.pic_id);
+                } else {
+                    setPicId('');
+                }
+            } else {
+                setPicId('');
+            }
+
             setRootCause('');
             setResolution('');
             setInternalNotes('');
         }
         setFile(null);
-    }, [initialData, isOpen]);
+    }, [initialData, isOpen, pics, isAdminUser, currentUser]);
 
     const processFile = async (selectedFile) => {
         if (!selectedFile) return;
@@ -129,7 +140,7 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
         try {
             const formData = new FormData();
             formData.append('image', file);
-            const res = await axios.post('http://localhost:5000/api/tickets/ocr', formData, {
+            const res = await axios.post(`http://${window.location.hostname}:5000/api/tickets/ocr`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             setDescription(res.data.text);
@@ -169,18 +180,18 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
     const formattedId = initialData ? `#${initialData.id}` : '';
 
     return (
-        <div className="w-full max-h-full bg-white flex flex-col overflow-hidden">
+        <div className="w-full max-h-full bg-white dark:bg-slate-800 flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="flex justify-between items-start p-6 border-b border-slate-100 shrink-0">
+            <div className="flex justify-between items-start p-6 border-b border-slate-100 dark:border-slate-700 shrink-0">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">
                         {isEdit ? 'Edit Tiket' : 'Buat Tiket Baru'}
                     </h2>
                     {isEdit && (
-                        <p className="text-sm font-medium text-slate-500 mt-1">{formattedId}</p>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">{formattedId}</p>
                     )}
                 </div>
-                <button type="button" onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                <button type="button" onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
                     <X size={20} strokeWidth={2.5} />
                 </button>
             </div>
@@ -188,26 +199,26 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
             {/* Form Body */}
             <form id="ticket-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
                 <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-2">Judul Tiket <span className="text-red-500">*</span></label>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Judul Tiket <span className="text-red-500">*</span></label>
                     <input
                         type="text"
                         required
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="w-full px-4 py-2.5 text-sm font-medium border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                        className="w-full px-3 py-2.5 text-[13px] bg-transparent text-slate-800 dark:text-slate-100 font-medium border border-slate-200/80 dark:border-slate-600 rounded-[4px] focus:outline-none focus:border-blue-500 dark:focus:border-blue-500 transition-all"
                         placeholder="Masukkan judul tiket"
                     />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">Layanan <span className="text-red-500">*</span></label>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Layanan <span className="text-red-500">*</span></label>
                         <div className="relative">
                             <select
                                 value={layanan}
                                 onWheel={(e) => e.target.blur()}
                                 onChange={(e) => setLayanan(e.target.value)}
-                                className="w-full pl-4 pr-10 py-2.5 text-sm font-medium bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none"
+                                className="w-full pl-4 pr-10 py-2.5 text-[13px] bg-transparent text-slate-800 dark:text-slate-100 font-medium border border-slate-200/80 dark:border-slate-600 rounded-[4px] focus:outline-none focus:border-blue-500 transition-all appearance-none [&>option]:bg-white [&>option]:dark:bg-slate-800"
                             >
                                 <option value="365">365</option>
                                 <option value="Di Luar 365">Di Luar 365</option>
@@ -217,13 +228,13 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">Prioritas <span className="text-red-500">*</span></label>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Prioritas <span className="text-red-500">*</span></label>
                         <div className="relative">
                             <select
                                 value={priority}
                                 onWheel={(e) => e.target.blur()}
                                 onChange={(e) => setPriority(e.target.value)}
-                                className="w-full pl-4 pr-10 py-2.5 text-sm font-medium bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none"
+                                className="w-full pl-4 pr-10 py-2.5 text-[13px] bg-transparent text-slate-800 dark:text-slate-100 font-medium border border-slate-200/80 dark:border-slate-600 rounded-[4px] focus:outline-none focus:border-blue-500 transition-all appearance-none [&>option]:bg-white [&>option]:dark:bg-slate-800"
                             >
                                 <option value="High">High</option>
                                 <option value="Medium">Medium</option>
@@ -234,14 +245,15 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">PIC <span className="text-red-500">*</span></label>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">PIC <span className="text-red-500">*</span></label>
                         <div className="relative">
                             <select
                                 required
                                 value={picId}
+                                disabled={!isAdminUser}
                                 onWheel={(e) => e.target.blur()}
                                 onChange={(e) => setPicId(e.target.value)}
-                                className="w-full pl-4 pr-10 py-2.5 text-sm font-medium bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none"
+                                className={`w-full pl-4 pr-10 py-2.5 text-[13px] bg-transparent ${!isAdminUser ? 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 cursor-not-allowed' : 'text-slate-800 dark:text-slate-100'} font-medium border border-slate-200/80 dark:border-slate-600 rounded-[4px] focus:outline-none focus:border-blue-500 transition-all appearance-none [&>option]:bg-white [&>option]:dark:bg-slate-800`}
                             >
                                 <option value="">Pilih PIC...</option>
                                 {[...new Map(pics.map(item => [item.pic_name, item])).values()].map(pic => (
@@ -253,13 +265,13 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
                     </div>
                     {isEdit && (
                         <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-2">Status <span className="text-red-500">*</span></label>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Status <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <select
                                     value={status}
                                     onWheel={(e) => e.target.blur()}
                                     onChange={(e) => setStatus(e.target.value)}
-                                    className="w-full pl-4 pr-10 py-2.5 text-sm font-medium bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none"
+                                    className="w-full pl-4 pr-10 py-2.5 text-[13px] bg-transparent text-slate-800 dark:text-slate-100 font-medium border border-slate-200/80 dark:border-slate-600 rounded-[4px] focus:outline-none focus:border-blue-500 transition-all appearance-none [&>option]:bg-white [&>option]:dark:bg-slate-800"
                                 >
                                     <option value="To Do">To Do</option>
                                     <option value="On Progress">On Progress</option>
@@ -272,29 +284,29 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
                 </div>
 
                 <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-2">Deskripsi Masalah <span className="text-red-500">*</span></label>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Deskripsi Masalah <span className="text-red-500">*</span></label>
                     <textarea
                         required
                         rows={5}
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        className="w-full px-4 py-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all resize-none"
+                        className="w-full px-3 py-2.5 text-[13px] bg-transparent text-slate-800 dark:text-slate-100 border border-slate-200/80 dark:border-slate-600 rounded-[4px] focus:outline-none focus:border-blue-500 transition-all resize-none"
                         placeholder="Jelaskan masalah secara detail..."
                     />
-                    <div className="text-[11px] text-slate-400 text-right mt-1 font-medium">{description?.length || 0}/2000</div>
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500 text-right mt-1 font-medium">{description?.length || 0}/2000</div>
                 </div>
 
 
 
                 {!isEdit && (
                     <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">Lampiran</label>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">Lampiran</label>
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-3">
                             <button
                                 type="button"
                                 onClick={handleAutoParse}
                                 disabled={!file || parsing}
-                                className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 border border-purple-200 rounded-lg font-bold text-xs hover:bg-purple-100 transition-colors disabled:opacity-50"
+                                className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/50 rounded-[4px] font-bold text-xs hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors disabled:opacity-50"
                             >
                                 {parsing ? <span className="animate-spin"><Bot size={14} /></span> : <Bot size={14} />}
                                 <span>{parsing ? 'Parsing...' : 'Auto-Parse Text'}</span>
@@ -302,12 +314,12 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
                         </div>
                         
                         {previewUrl ? (
-                            <div className="rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-between p-3">
+                            <div className="rounded-[4px] overflow-hidden border border-slate-200/80 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between p-3">
                                 <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="w-10 h-10 rounded bg-slate-200 shrink-0 overflow-hidden">
+                                    <div className="w-10 h-10 rounded bg-slate-200 dark:bg-slate-800 shrink-0 overflow-hidden">
                                         <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                                     </div>
-                                    <span className="text-sm font-medium text-blue-600 truncate">{file?.name || 'attachment.jpg'}</span>
+                                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate">{file?.name || 'attachment.jpg'}</span>
                                 </div>
                                 <button
                                     type="button"
@@ -315,7 +327,7 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
                                         setFile(null);
                                         if (fileInputRef.current) fileInputRef.current.value = '';
                                     }}
-                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
                                 >
                                     <X size={16} />
                                 </button>
@@ -329,7 +341,7 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
                                     onChange={handleFileChange}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 />
-                                <div className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 border-dashed rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
+                                <div className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-slate-200/80 dark:border-slate-600 border-dashed rounded-[4px] text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                                     <span>+ Tambah Lampiran</span>
                                 </div>
                             </div>
@@ -339,11 +351,11 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
             </form>
 
             {/* Footer Actions */}
-            <div className="p-6 border-t border-slate-100 shrink-0 flex items-center justify-between bg-white">
+            <div className="p-6 border-t border-slate-100 dark:border-slate-700 shrink-0 flex items-center justify-between bg-white dark:bg-slate-800">
                 {isEdit ? (
                     <button
                         type="button"
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-red-600 dark:text-red-500 border border-red-200 dark:border-red-800/50 rounded-[4px] hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                     >
                         <Trash2 size={16} />
                         Hapus Tiket
@@ -355,7 +367,7 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                        className="px-5 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-600 rounded-[4px] hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                     >
                         Batal
                     </button>
@@ -363,7 +375,7 @@ export default function TicketModal({ isOpen, onClose, onSubmit, initialData, pi
                         type="submit"
                         form="ticket-form"
                         disabled={loading}
-                        className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 flex items-center"
+                        className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-[4px] hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 flex items-center"
                     >
                         {loading ? 'Menyimpan...' : (isEdit ? 'Simpan Perubahan' : 'Buat Tiket')}
                     </button>

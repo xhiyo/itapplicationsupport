@@ -2,19 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, Save, Search, Users, LayoutGrid, Building2, ChevronLeft, ChevronRight, CheckCircle2, Leaf } from 'lucide-react';
 import { getPicIt, createPicIt, updatePicIt, deletePicIt, bulkUpdatePicName, bulkDeletePicGroup, createPicNameOnly } from '../services/api';
 
-function PICIT() {
+function PICIT({ user }) {
+    const isAdmin = user?.role === 'Admin';
     const [pics, setPics] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // View state
     const [selectedPicName, setSelectedPicName] = useState(null);
+    const canEditSelectedPic = isAdmin || (user?.name && selectedPicName && user.name === selectedPicName);
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const picsPerPage = 5;
+    const [picsPerPage, setPicsPerPage] = useState(5);
 
     // App Table Pagination
     const [currentAppPage, setCurrentAppPage] = useState(1);
-    const appsPerPage = 7;
+    const [appsPerPage, setAppsPerPage] = useState(7);
 
     // Modal states
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,7 +47,9 @@ function PICIT() {
             // Auto-select first PIC if none selected
             if (data.length > 0 && !selectedPicName) {
                 const uniqueNames = [...new Set(data.map(p => p.pic_name))].filter(Boolean);
-                if (uniqueNames.length > 0) {
+                if (user?.name && uniqueNames.includes(user.name)) {
+                    setSelectedPicName(user.name);
+                } else if (uniqueNames.length > 0) {
                     setSelectedPicName(uniqueNames[0]);
                 }
             }
@@ -78,7 +82,13 @@ function PICIT() {
         }, {});
     }, [pics]);
 
-    const uniquePicNames = React.useMemo(() => [...new Set(pics.map(p => p.pic_name))].filter(Boolean), [pics]);
+    const uniquePicNames = React.useMemo(() => {
+        const names = [...new Set(pics.map(p => p.pic_name))].filter(Boolean);
+        if (user?.name && names.includes(user.name)) {
+            return [user.name, ...names.filter(n => n !== user.name)];
+        }
+        return names;
+    }, [pics, user?.name]);
     const totalPics = uniquePicNames.length;
     const totalApps = pics.filter(p => p.id).length;
 
@@ -105,9 +115,10 @@ function PICIT() {
 
     // Pagination logic
     const totalPages = Math.ceil(filteredPicNames.length / picsPerPage) || 1;
+    const safeCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
     const paginatedPicNames = filteredPicNames.slice(
-        (currentPage - 1) * picsPerPage,
-        currentPage * picsPerPage
+        (safeCurrentPage - 1) * picsPerPage,
+        safeCurrentPage * picsPerPage
     );
 
     // Selected PIC items
@@ -115,10 +126,34 @@ function PICIT() {
 
     // App Pagination logic
     const totalAppPages = Math.ceil(selectedPicItems.length / appsPerPage) || 1;
+    const safeCurrentAppPage = Math.max(1, Math.min(currentAppPage, totalAppPages));
     const paginatedAppItems = selectedPicItems.slice(
-        (currentAppPage - 1) * appsPerPage,
-        currentAppPage * appsPerPage
+        (safeCurrentAppPage - 1) * appsPerPage,
+        safeCurrentAppPage * appsPerPage
     );
+
+    useEffect(() => {
+        if (currentPage > totalPages) setCurrentPage(totalPages);
+    }, [currentPage, totalPages]);
+
+    useEffect(() => {
+        if (currentAppPage > totalAppPages) setCurrentAppPage(totalAppPages);
+    }, [currentAppPage, totalAppPages]);
+
+    // Auto-jump to the page containing the selected PIC (e.g., after adding a new PIC)
+    useEffect(() => {
+        if (selectedPicName && filteredPicNames.length > 0) {
+            const index = filteredPicNames.indexOf(selectedPicName);
+            if (index !== -1) {
+                const targetPage = Math.floor(index / picsPerPage) + 1;
+                setCurrentPage(prev => {
+                    if (prev !== targetPage) return targetPage;
+                    return prev;
+                });
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedPicName, filteredPicNames, picsPerPage]);
 
     // Tag generator helper
     const getSystemTags = (picName) => {
@@ -130,9 +165,8 @@ function PICIT() {
             const words = sys.split(' ');
             return words[0];
         });
-        const uniqueTags = [...new Set(tags)].filter(Boolean);
-        const displayTags = uniqueTags.slice(0, 3);
-        const remaining = uniqueTags.length - displayTags.length;
+        const displayTags = tags.slice(0, 3);
+        const remaining = items.length > 3 ? items.length - 3 : 0;
 
         return { displayTags, remaining };
     };
@@ -267,15 +301,20 @@ function PICIT() {
                             <h1 className="text-3xl font-bold text-[#0b1b3d] dark:text-white tracking-tight mb-2">PIC IT Application Support</h1>
                             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Daftar Penanggung Jawab (PIC) dan aplikasi yang menjadi tanggung jawabnya.</p>
                         </div>
-                        <div className="flex items-center">
-                            <button
-                                onClick={() => setIsAddPicModalOpen(true)}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-sm shadow-blue-200"
-                            >
-                                <Plus size={18} strokeWidth={2.5} />
-                                Tambah PIC Baru
-                            </button>
-                        </div>
+                        {(isAdmin || (user?.name && !uniquePicNames.includes(user.name))) && (
+                            <div className="flex items-center">
+                                <button
+                                    onClick={() => {
+                                        setIsAddPicModalOpen(true);
+                                        if (!isAdmin && user?.name) setPicNameOnly(user.name);
+                                    }}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-[4px] text-sm font-bold hover:bg-blue-700 transition-all shadow-sm shadow-blue-200"
+                                >
+                                    <Plus size={18} strokeWidth={2.5} />
+                                    Tambah PIC Baru
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Search & Metrics Row */}
@@ -292,7 +331,7 @@ function PICIT() {
                                         setSearchTerm(e.target.value);
                                         setCurrentPage(1);
                                     }}
-                                    className="w-full h-full pl-12 pr-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-medium text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-400 outline-none transition-all shadow-sm"
+                                    className="w-full h-full pl-12 pr-4 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-md text-sm font-medium text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500  dark:focus:ring-blue-900/30 focus:border-blue-400 outline-none transition-all shadow-sm"
                                 />
                             </div>
                         </div>
@@ -300,8 +339,8 @@ function PICIT() {
                         {/* Metric Cards */}
                         <div className="w-full xl:flex-1 grid grid-cols-1 gap-5">
                             {/* Card 1 */}
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                            <div className="bg-white dark:bg-slate-800 rounded-md p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-[4px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                                     <Users size={22} strokeWidth={2.5} />
                                 </div>
                                 <div>
@@ -316,104 +355,109 @@ function PICIT() {
                     <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 pb-8">
 
                         {/* LEFT SIDEBAR: PIC List */}
-                        <div className="w-full lg:w-[350px] shrink-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl flex flex-col h-[650px] overflow-hidden">
+                        <div className="w-full lg:w-[350px] shrink-0 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-sm rounded-md flex flex-col h-[650px] overflow-hidden">
                             <div className="flex-1 overflow-y-auto flex flex-col custom-scrollbar">
-                            {paginatedPicNames.length === 0 ? (
-                                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 text-center text-slate-400 font-medium text-sm shadow-sm">
-                                    Tidak ada PIC yang ditemukan.
-                                </div>
-                            ) : (
-                                paginatedPicNames.map((name) => {
-                                    const count = (groupedPics[name] || []).length;
-                                    const { displayTags, remaining } = getSystemTags(name);
-                                    const isActive = selectedPicName === name;
+                                {paginatedPicNames.length === 0 ? (
+                                    <div className="bg-white dark:bg-slate-800 rounded-md border border-slate-200/80 dark:border-slate-700 p-8 text-center text-slate-400 font-medium text-sm shadow-sm">
+                                        Tidak ada PIC yang ditemukan.
+                                    </div>
+                                ) : (
+                                    paginatedPicNames.map((name) => {
+                                        const count = (groupedPics[name] || []).length;
+                                        const picRole = (groupedPics[name]?.[0]?.pic_role) || 'Staff';
+                                        const { displayTags, remaining } = getSystemTags(name);
+                                        const isActive = selectedPicName === name;
 
-                                    return (
-                                        <div
-                                            key={name}
-                                            onClick={() => {
-                                                setSelectedPicName(name);
-                                                setCurrentAppPage(1);
-                                            }}
-                                            className={`p-5 cursor-pointer transition-all border-b border-slate-100 dark:border-slate-700 last:border-b-0 relative overflow-hidden ${isActive
-                                                ? 'bg-blue-50/50 dark:bg-blue-900/40'
-                                                : 'bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                                                }`}
-                                        >
-                                            {isActive && (
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-500">
-                                                    <ChevronRight size={20} strokeWidth={3} />
-                                                </div>
-                                            )}
+                                        return (
+                                            <div
+                                                key={name}
+                                                onClick={() => {
+                                                    setSelectedPicName(name);
+                                                    setCurrentAppPage(1);
+                                                }}
+                                                className={`p-5 cursor-pointer transition-all border-b border-slate-100 dark:border-slate-700 last:border-b-0 relative overflow-hidden ${isActive
+                                                    ? 'bg-blue-50/50 dark:bg-blue-900/40'
+                                                    : 'bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                                    }`}
+                                            >
+                                                {isActive && (
+                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-500">
+                                                        <ChevronRight size={20} strokeWidth={3} />
+                                                    </div>
+                                                )}
 
-                                            <div className="flex items-start gap-4">
-                                                <div className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center text-white font-bold text-xl shadow-sm ${getAvatarColor(name)}`}>
-                                                    {name ? name.charAt(0).toUpperCase() : '?'}
-                                                </div>
-                                                <div className="flex-1 pr-6">
-                                                    <h4 className="font-bold text-slate-800 dark:text-white text-[17px] mb-0.5">{name}</h4>
-                                                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-3">{count} Tanggung Jawab</p>
-
-                                                    {displayTags.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1.5">
-                                                            {displayTags.map((tag, idx) => (
-                                                                <span key={idx} className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-[10px] font-bold">
-                                                                    {tag}
-                                                                </span>
-                                                            ))}
-                                                            {remaining > 0 && (
-                                                                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded text-[10px] font-bold">
-                                                                    +{remaining}
-                                                                </span>
-                                                            )}
+                                                <div className="flex items-start gap-4">
+                                                    <div className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center text-white font-bold text-xl shadow-sm ${getAvatarColor(name)}`}>
+                                                        {name ? name.charAt(0).toUpperCase() : '?'}
+                                                    </div>
+                                                    <div className="flex-1 pr-6">
+                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                            <h4 className="font-bold text-slate-800 dark:text-white text-[17px] leading-tight">{name}</h4>
+                                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-[3px] uppercase tracking-wider shrink-0 ${picRole === 'Admin' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                                                                {picRole}
+                                                            </span>
                                                         </div>
-                                                    )}
+                                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-3">{count} Tanggung Jawab</p>
+
+                                                        {displayTags.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {displayTags.map((tag, idx) => (
+                                                                    <span key={idx} className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-[10px] font-bold">
+                                                                        {tag}
+                                                                    </span>
+                                                                ))}
+                                                                {remaining > 0 && (
+                                                                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded text-[10px] font-bold">
+                                                                        +{remaining}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })
-                            )}
+                                        );
+                                    })
+                                )}
                             </div>
-                            {/* Pagination */}
                             {totalPages > 1 && (
-                                <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
+                                <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0 flex flex-col gap-3">
                                     <div className="flex items-center justify-center gap-2">
-                                    <button
-                                        disabled={currentPage === 1}
-                                        onClick={() => setCurrentPage(prev => prev - 1)}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
-                                    >
-                                        <ChevronLeft size={16} />
-                                    </button>
-
-                                    {Array.from({ length: totalPages }).map((_, i) => (
                                         <button
-                                            key={i}
-                                            onClick={() => setCurrentPage(i + 1)}
-                                            className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${currentPage === i + 1
-                                                ? 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none'
-                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                                }`}
+                                            disabled={currentPage === 1}
+                                            onClick={() => setCurrentPage(prev => prev - 1)}
+                                            className="w-8 h-8 flex items-center justify-center rounded-[4px] border border-slate-200/80 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
                                         >
-                                            {i + 1}
+                                            <ChevronLeft size={16} />
                                         </button>
-                                    ))}
 
-                                    <button
-                                        disabled={currentPage === totalPages}
-                                        onClick={() => setCurrentPage(prev => prev + 1)}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
-                                    >
-                                        <ChevronRight size={16} />
-                                    </button>
+                                        {Array.from({ length: totalPages }).map((_, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setCurrentPage(i + 1)}
+                                                className={`w-8 h-8 flex items-center justify-center rounded-[4px] text-sm font-bold transition-colors ${currentPage === i + 1
+                                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none'
+                                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                    }`}
+                                            >
+                                                {i + 1}
+                                            </button>
+                                        ))}
+
+                                        <button
+                                            disabled={currentPage === totalPages}
+                                            onClick={() => setCurrentPage(prev => prev + 1)}
+                                            className="w-8 h-8 flex items-center justify-center rounded-[4px] border border-slate-200/80 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                                        >
+                                            <ChevronRight size={16} />
+                                        </button>
                                     </div>
                                 </div>
                             )}
                         </div>
 
                         {/* RIGHT MAIN CONTENT: Selected PIC Details */}
-                        <div className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl overflow-hidden flex flex-col h-[650px]">
+                        <div className="flex-1 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-sm rounded-md overflow-hidden flex flex-col h-[650px]">
                             {selectedPicName ? (
                                 <>
                                     {/* Header Detail */}
@@ -429,32 +473,38 @@ function PICIT() {
                                                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{selectedPicItems.length} Tanggung Jawab</p>
                                             </div>
                                         </div>
-                                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                            <button
-                                                onClick={() => handleOpenModal(null, selectedPicName)}
-                                                className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold text-sm rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors shadow-sm"
-                                            >
-                                                <Plus size={16} />
-                                                Tambah Tanggung Jawab
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setGroupInputValue(selectedPicName);
-                                                    setIsEditGroupModalOpen(true);
-                                                }}
-                                                className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-                                            >
-                                                <Edit2 size={16} />
-                                                Edit PIC
-                                            </button>
-                                            <button
-                                                onClick={handleDeleteGroup}
-                                                className="flex items-center gap-2 px-4 py-2 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 text-rose-600 dark:text-rose-400 font-bold text-sm rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors shadow-sm"
-                                            >
-                                                <Trash2 size={16} />
-                                                Hapus PIC
-                                            </button>
-                                        </div>
+                                        {canEditSelectedPic && (
+                                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                                                <button
+                                                    onClick={() => handleOpenModal(null, selectedPicName)}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold text-sm rounded-[4px] hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors shadow-sm"
+                                                >
+                                                    <Plus size={16} />
+                                                    Tambah Tanggung Jawab
+                                                </button>
+                                                {isAdmin && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                setGroupInputValue(selectedPicName);
+                                                                setIsEditGroupModalOpen(true);
+                                                            }}
+                                                            className="flex items-center gap-2 px-4 py-2 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-[4px] hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                                                        >
+                                                            <Edit2 size={16} />
+                                                            Edit PIC
+                                                        </button>
+                                                        <button
+                                                            onClick={handleDeleteGroup}
+                                                            className="flex items-center gap-2 px-4 py-2 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 text-rose-600 dark:text-rose-400 font-bold text-sm rounded-[4px] hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors shadow-sm"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                            Hapus PIC
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Table Content */}
@@ -469,7 +519,7 @@ function PICIT() {
                                                     <th className="px-6 py-4">Keterangan</th>
                                                     <th className="px-6 py-4">Legal Entity</th>
                                                     <th className="px-6 py-4">Section / Departemen</th>
-                                                    <th className="px-6 py-4 text-center">Aksi</th>
+                                                    {canEditSelectedPic && <th className="px-6 py-4 text-center">Aksi</th>}
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -479,24 +529,26 @@ function PICIT() {
                                                         <td className="px-6 py-4 font-medium text-blue-600 dark:text-blue-400">{sys.keterangan || '-'}</td>
                                                         <td className="px-6 py-4 font-medium text-slate-500 dark:text-slate-400">{sys.legal_entity || '-'}</td>
                                                         <td className="px-6 py-4 font-medium text-slate-500 dark:text-slate-400">{sys.unit || '-'}</td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                <button
-                                                                    onClick={() => handleOpenModal(sys)}
-                                                                    className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                                    title="Edit Aplikasi"
-                                                                >
-                                                                    <Edit2 size={16} />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDelete(sys.id)}
-                                                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                                                    title="Hapus Aplikasi"
-                                                                >
-                                                                    <Trash2 size={16} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
+                                                        {canEditSelectedPic && (
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button
+                                                                        onClick={() => handleOpenModal(sys)}
+                                                                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-[4px] transition-colors"
+                                                                        title="Edit Aplikasi"
+                                                                    >
+                                                                        <Edit2 size={16} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDelete(sys.id)}
+                                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-[4px] transition-colors"
+                                                                        title="Hapus Aplikasi"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        )}
                                                     </tr>
                                                 ))}
                                                 {selectedPicItems.length === 0 && (
@@ -505,12 +557,14 @@ function PICIT() {
                                                             <div className="flex flex-col items-center justify-center gap-3">
                                                                 <LayoutGrid size={32} className="opacity-20 text-slate-400" />
                                                                 <p className="text-slate-400">Belum ada aplikasi yang menjadi tanggung jawab PIC ini.</p>
-                                                                <button
-                                                                    onClick={() => handleOpenModal(null, selectedPicName)}
-                                                                    className="text-blue-600 dark:text-blue-400 hover:underline mt-1"
-                                                                >
-                                                                    + Tambah Aplikasi Pertama
-                                                                </button>
+                                                                {canEditSelectedPic && (
+                                                                    <button
+                                                                        onClick={() => handleOpenModal(null, selectedPicName)}
+                                                                        className="text-blue-600 dark:text-blue-400 hover:underline mt-1"
+                                                                    >
+                                                                        + Tambah Aplikasi Pertama
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -519,9 +573,11 @@ function PICIT() {
                                         </table>
                                     </div>
                                     <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium flex justify-between items-center">
-                                        <span className="text-slate-500 dark:text-slate-400">
-                                            Menampilkan {selectedPicItems.length === 0 ? 0 : ((currentAppPage - 1) * appsPerPage) + 1} - {Math.min(currentAppPage * appsPerPage, selectedPicItems.length)} dari {selectedPicItems.length} aplikasi
-                                        </span>
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-slate-500 dark:text-slate-400">
+                                                Menampilkan {selectedPicItems.length === 0 ? 0 : ((currentAppPage - 1) * appsPerPage) + 1} - {Math.min(currentAppPage * appsPerPage, selectedPicItems.length)} dari {selectedPicItems.length} aplikasi
+                                            </span>
+                                        </div>
 
                                         {/* App Pagination Controls */}
                                         {totalAppPages > 1 && (
@@ -529,7 +585,7 @@ function PICIT() {
                                                 <button
                                                     disabled={currentAppPage === 1}
                                                     onClick={() => setCurrentAppPage(prev => prev - 1)}
-                                                    className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                                                    className="w-7 h-7 flex items-center justify-center rounded border border-slate-200/80 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
                                                 >
                                                     <ChevronLeft size={14} />
                                                 </button>
@@ -564,7 +620,7 @@ function PICIT() {
                                                 <button
                                                     disabled={currentAppPage === totalAppPages}
                                                     onClick={() => setCurrentAppPage(prev => prev + 1)}
-                                                    className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                                                    className="w-7 h-7 flex items-center justify-center rounded border border-slate-200/80 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
                                                 >
                                                     <ChevronRight size={14} />
                                                 </button>
@@ -588,14 +644,14 @@ function PICIT() {
             {/* Modal Input/Edit PIC System */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-md shadow-xl border border-slate-200/80 max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <h3 className="font-bold text-slate-800 text-base">
                                 {editingPic ? 'Edit Aplikasi PIC' : 'Tambah Aplikasi Baru'}
                             </h3>
                             <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-[4px] transition-colors"
                             >
                                 <X size={18} />
                             </button>
@@ -609,8 +665,8 @@ function PICIT() {
                                     required
                                     value={formData.pic_name}
                                     onChange={(e) => setFormData({ ...formData, pic_name: e.target.value })}
-                                    className="w-full text-sm px-4 py-2 border border-slate-200 bg-slate-100 text-slate-500 rounded-xl outline-none cursor-not-allowed"
-                                    placeholder="Contoh: Dwi"
+                                    className="w-full text-sm px-4 py-2 border border-slate-200/80 bg-slate-100 text-slate-500 rounded-[4px] outline-none cursor-not-allowed"
+                                    placeholder="Ketik Disini"
                                     disabled
                                 />
                             </div>
@@ -622,8 +678,8 @@ function PICIT() {
                                     required
                                     value={formData.system_name}
                                     onChange={(e) => setFormData({ ...formData, system_name: e.target.value })}
-                                    className="w-full text-sm px-4 py-2 border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl outline-none transition-all"
-                                    placeholder="Contoh: SCM - Trade All Legal Entity"
+                                    className="w-full text-sm px-4 py-2 border border-slate-200/80 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-[4px] outline-none transition-all"
+                                    placeholder="Ketik Disini"
                                 />
                             </div>
 
@@ -633,7 +689,7 @@ function PICIT() {
                                     value={formData.keterangan}
                                     onWheel={(e) => e.target.blur()}
                                     onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
-                                    className="w-full text-sm px-4 py-2 border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl outline-none transition-all"
+                                    className="w-full text-sm px-4 py-2 border border-slate-200/80 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-[4px] outline-none transition-all"
                                 >
                                     <option value="">Pilih Keterangan...</option>
                                     <option value="365">365</option>
@@ -647,8 +703,8 @@ function PICIT() {
                                     type="text"
                                     value={formData.legal_entity}
                                     onChange={(e) => setFormData({ ...formData, legal_entity: e.target.value })}
-                                    className="w-full text-sm px-4 py-2 border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl outline-none transition-all"
-                                    placeholder="Contoh: All legal entity"
+                                    className="w-full text-sm px-4 py-2 border border-slate-200/80 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-[4px] outline-none transition-all"
+                                    placeholder="Ketik Disini"
                                 />
                             </div>
 
@@ -659,8 +715,8 @@ function PICIT() {
                                     required
                                     value={formData.unit}
                                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                                    className="w-full text-sm px-4 py-2 border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl outline-none transition-all"
-                                    placeholder="Contoh: Toko, HO"
+                                    className="w-full text-sm px-4 py-2 border border-slate-200/80 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-[4px] outline-none transition-all"
+                                    placeholder="Ketik Disini"
                                 />
                             </div>
 
@@ -668,14 +724,14 @@ function PICIT() {
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                                    className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[4px] transition-colors"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSaving}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm disabled:opacity-70"
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-[4px] transition-colors shadow-sm disabled:opacity-70"
                                 >
                                     {isSaving ? 'Menyimpan...' : 'Simpan'}
                                 </button>
@@ -688,12 +744,12 @@ function PICIT() {
             {/* Modal Edit Group (Rename PIC) */}
             {isEditGroupModalOpen && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-md shadow-xl border border-slate-200/80 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <h3 className="font-bold text-slate-800 text-base">Edit Nama PIC</h3>
                             <button
                                 onClick={() => setIsEditGroupModalOpen(false)}
-                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-[4px] transition-colors"
                             >
                                 <X size={18} />
                             </button>
@@ -705,7 +761,7 @@ function PICIT() {
                                     type="text"
                                     value={groupInputValue}
                                     onChange={(e) => setGroupInputValue(e.target.value)}
-                                    className="w-full text-sm px-4 py-2 border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl outline-none transition-all"
+                                    className="w-full text-sm px-4 py-2 border border-slate-200/80 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-[4px] outline-none transition-all"
                                     autoFocus
                                     onKeyDown={(e) => e.key === 'Enter' && handleSaveGroupName()}
                                 />
@@ -714,13 +770,13 @@ function PICIT() {
                                 <button
                                     type="button"
                                     onClick={() => setIsEditGroupModalOpen(false)}
-                                    className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                                    className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[4px] transition-colors"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     onClick={handleSaveGroupName}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-[4px] transition-colors shadow-sm"
                                 >
                                     <Save size={16} /> Simpan
                                 </button>
@@ -732,7 +788,7 @@ function PICIT() {
 
             {/* Toast Notification */}
             {toastMessage && (
-                <div className="fixed bottom-6 right-6 z-[200] bg-emerald-500 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300">
+                <div className="fixed bottom-6 right-6 z-[200] bg-emerald-500 text-white px-6 py-4 rounded-[4px] shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300">
                     <CheckCircle2 size={20} className="text-emerald-100" />
                     <span className="font-bold tracking-wide text-sm">{toastMessage}</span>
                 </div>
@@ -741,12 +797,12 @@ function PICIT() {
             {/* Modal Tambah PIC Baru (Hanya Nama) */}
             {isAddPicModalOpen && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-md shadow-xl border border-slate-200/80 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <h3 className="font-bold text-slate-800 text-base">Tambah PIC Baru</h3>
                             <button
                                 onClick={() => setIsAddPicModalOpen(false)}
-                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-[4px] transition-colors"
                             >
                                 <X size={18} />
                             </button>
@@ -759,23 +815,24 @@ function PICIT() {
                                     required
                                     value={picNameOnly}
                                     onChange={(e) => setPicNameOnly(e.target.value)}
-                                    className="w-full text-sm px-4 py-2 border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl outline-none transition-all"
-                                    placeholder="Contoh: Dwi"
+                                    className="w-full text-sm px-4 py-2 border border-slate-200/80 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-[4px] outline-none transition-all disabled:opacity-70 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                    placeholder="Ketik Disini"
                                     autoFocus
+                                    disabled={!isAdmin}
                                 />
                             </div>
                             <div className="flex gap-3 mt-2">
                                 <button
                                     type="button"
                                     onClick={() => setIsAddPicModalOpen(false)}
-                                    className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                                    className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[4px] transition-colors"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSaving}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm disabled:opacity-70"
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-[4px] transition-colors shadow-sm disabled:opacity-70"
                                 >
                                     {isSaving ? 'Menyimpan...' : 'Simpan'}
                                 </button>

@@ -67,7 +67,7 @@ export default function KpiModal({ isOpen, onClose, picId, picName }) {
 
     return (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-md w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700 shrink-0">
                     <div>
@@ -90,24 +90,24 @@ export default function KpiModal({ isOpen, onClose, picId, picName }) {
                     ) : (
                         <div className="space-y-4">
                             {kpis.map(kpi => (
-                                <div key={kpi.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                                <div key={kpi.id} className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-[4px] p-4 shadow-sm flex items-center justify-between">
                                     {editingId === kpi.id ? (
                                         <form onSubmit={handleUpdateSubmit} className="flex-1 flex gap-3 items-end">
                                             <div className="flex-1">
                                                 <label className="text-xs font-bold text-slate-500 mb-1 block">{t('Nama KPI')}</label>
-                                                <input type="text" required value={editForm.kpi_name} onChange={e => setEditForm({...editForm, kpi_name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm" />
+                                                <input type="text" required value={editForm.kpi_name} onChange={e => setEditForm({...editForm, kpi_name: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 rounded-[4px] text-sm" />
                                             </div>
                                             <div className="w-24">
                                                 <label className="text-xs font-bold text-slate-500 mb-1 block">{t('Target')}</label>
-                                                <input type="number" required value={editForm.target_value} onChange={e => setEditForm({...editForm, target_value: Number(e.target.value)})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm" />
+                                                <input type="number" required value={editForm.target_value} onChange={e => setEditForm({...editForm, target_value: Number(e.target.value)})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 rounded-[4px] text-sm" />
                                             </div>
                                             <div className="w-32">
                                                 <label className="text-xs font-bold text-slate-500 mb-1 block">{t('Satuan')}</label>
-                                                <input type="text" value={editForm.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} placeholder="Tiket, %, dll" className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm" />
+                                                <input type="text" value={editForm.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} placeholder="Tiket, %, dll" className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 rounded-[4px] text-sm" />
                                             </div>
                                             <div className="flex gap-2 pb-0.5">
-                                                <button type="submit" className="p-2 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200"><Save size={18} /></button>
-                                                <button type="button" onClick={() => setEditingId(null)} className="p-2 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200"><X size={18} /></button>
+                                                <button type="submit" className="p-2 bg-emerald-100 text-emerald-600 rounded-[4px] hover:bg-emerald-200"><Save size={18} /></button>
+                                                <button type="button" onClick={() => setEditingId(null)} className="p-2 bg-slate-100 text-slate-500 rounded-[4px] hover:bg-slate-200"><X size={18} /></button>
                                             </div>
                                         </form>
                                     ) : (
@@ -123,10 +123,10 @@ export default function KpiModal({ isOpen, onClose, picId, picName }) {
                                                     setEditingId(kpi.id);
                                                     setEditForm({ kpi_name: kpi.kpi_name, target_value: kpi.target_value, unit: kpi.unit });
                                                     setIsCreating(false);
-                                                }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors">
+                                                }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-[4px] transition-colors">
                                                     <Edit2 size={16} />
                                                 </button>
-                                                <button onClick={() => handleDelete(kpi.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors">
+                                                <button onClick={() => handleDelete(kpi.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-[4px] transition-colors">
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
@@ -136,29 +136,29 @@ export default function KpiModal({ isOpen, onClose, picId, picName }) {
                             ))}
 
                             {kpis.length === 0 && !isCreating && (
-                                <div className="text-center py-8 text-slate-500 dark:text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+                                <div className="text-center py-8 text-slate-500 dark:text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[4px]">
                                     {t('Belum ada target KPI khusus untuk PIC ini.')}
                                 </div>
                             )}
 
                             {isCreating && (
-                                <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-xl p-4 shadow-sm">
+                                <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-[4px] p-4 shadow-sm">
                                     <form onSubmit={handleCreateSubmit} className="flex gap-3 items-end">
                                         <div className="flex-1">
                                             <label className="text-xs font-bold text-blue-700 dark:text-blue-400 mb-1 block">{t('Nama KPI')}</label>
-                                            <input type="text" required value={editForm.kpi_name} onChange={e => setEditForm({...editForm, kpi_name: e.target.value})} placeholder="Contoh: Target Resolusi" className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-lg text-sm" />
+                                            <input type="text" required value={editForm.kpi_name} onChange={e => setEditForm({...editForm, kpi_name: e.target.value})} placeholder="Contoh: Target Resolusi" className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-[4px] text-sm" />
                                         </div>
                                         <div className="w-24">
                                             <label className="text-xs font-bold text-blue-700 dark:text-blue-400 mb-1 block">{t('Target')}</label>
-                                            <input type="number" required value={editForm.target_value} onChange={e => setEditForm({...editForm, target_value: Number(e.target.value)})} className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-lg text-sm" />
+                                            <input type="number" required value={editForm.target_value} onChange={e => setEditForm({...editForm, target_value: Number(e.target.value)})} className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-[4px] text-sm" />
                                         </div>
                                         <div className="w-32">
                                             <label className="text-xs font-bold text-blue-700 dark:text-blue-400 mb-1 block">{t('Satuan')}</label>
-                                            <input type="text" value={editForm.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} placeholder="Tiket, %, dll" className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-lg text-sm" />
+                                            <input type="text" value={editForm.unit} onChange={e => setEditForm({...editForm, unit: e.target.value})} placeholder="Tiket, %, dll" className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-[4px] text-sm" />
                                         </div>
                                         <div className="flex gap-2 pb-0.5">
-                                            <button type="submit" className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Save size={18} /></button>
-                                            <button type="button" onClick={() => setIsCreating(false)} className="p-2 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300"><X size={18} /></button>
+                                            <button type="submit" className="p-2 bg-blue-600 text-white rounded-[4px] hover:bg-blue-700"><Save size={18} /></button>
+                                            <button type="button" onClick={() => setIsCreating(false)} className="p-2 bg-slate-200 text-slate-600 rounded-[4px] hover:bg-slate-300"><X size={18} /></button>
                                         </div>
                                     </form>
                                 </div>
@@ -170,7 +170,7 @@ export default function KpiModal({ isOpen, onClose, picId, picName }) {
                                         setIsCreating(true);
                                         setEditForm({ kpi_name: '', target_value: 0, unit: '' });
                                     }}
-                                    className="w-full py-3 flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl font-bold transition-all text-sm"
+                                    className="w-full py-3 flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-[4px] font-bold transition-all text-sm"
                                 >
                                     <Plus size={18} /> {t('Tambah KPI Baru')}
                                 </button>

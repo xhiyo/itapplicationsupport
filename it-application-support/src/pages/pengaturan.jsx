@@ -1,12 +1,46 @@
 import React, { useState } from 'react';
 import { 
     Monitor, Ticket, Bell, Database, Info,
-    Sun, Moon, RotateCcw, Trash2, Settings, Globe
+    Sun, Moon, RotateCcw, Trash2, Settings, Globe, Lock
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 function Pengaturan({ theme, setTheme, showBell, setShowBell, language, setLanguage }) {
     const { t } = useLanguage();
+    const [oldPassword, setOldPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [pwdStatus, setPwdStatus] = useState(null);
+
+    const handlePasswordChange = async (e) => {
+        e.preventDefault();
+        setPwdStatus(null);
+        if (newPassword !== confirmPassword) {
+            setPwdStatus({ type: 'error', text: 'Konfirmasi password baru tidak cocok!' });
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('http://localhost:5000/api/auth/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ oldPassword, newPassword })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            setPwdStatus({ type: 'success', text: 'Password berhasil diubah!' });
+            setOldPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (error) {
+            setPwdStatus({ type: 'error', text: error.message });
+        }
+    };
 
     return (
         <div className="animate-in fade-in duration-500 pb-10">
@@ -33,17 +67,17 @@ function Pengaturan({ theme, setTheme, showBell, setShowBell, language, setLangu
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 shadow-sm">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[4px] overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 shadow-sm">
                             <div className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-800 dark:text-white">{t('Tema')}</h4>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">{t('Pilih tema aplikasi yang Anda sukai.')}</p>
                                 </div>
-                                <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-                                    <button onClick={() => setTheme('light')} className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-xs font-semibold min-w-[100px] transition-all ${theme === 'light' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 border border-slate-200 dark:border-slate-600' : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 border border-transparent'}`}>
+                                <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-[4px] border border-slate-200/80 dark:border-slate-700">
+                                    <button onClick={() => setTheme('light')} className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-xs font-semibold min-w-[100px] transition-all ${theme === 'light' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 border border-slate-200/80 dark:border-slate-600' : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 border border-transparent'}`}>
                                         <Sun size={14} /> {t('Terang')}
                                     </button>
-                                    <button onClick={() => setTheme('dark')} className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-xs font-semibold min-w-[100px] transition-all ${theme === 'dark' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 border border-slate-200 dark:border-slate-600' : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 border border-transparent'}`}>
+                                    <button onClick={() => setTheme('dark')} className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md text-xs font-semibold min-w-[100px] transition-all ${theme === 'dark' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 border border-slate-200/80 dark:border-slate-600' : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 border border-transparent'}`}>
                                         <Moon size={14} /> {t('Gelap')}
                                     </button>
                                 </div>
@@ -64,12 +98,12 @@ function Pengaturan({ theme, setTheme, showBell, setShowBell, language, setLangu
                                             setLanguage(e.target.value);
                                             localStorage.setItem('language', e.target.value);
                                         }}
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all cursor-pointer appearance-none"
+                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-[4px] text-sm font-semibold text-slate-700 dark:text-slate-300 outline-none  dark:focus:ring-blue-900/30 transition-all cursor-pointer appearance-none"
                                     >
                                         <option value="Indonesia">Indonesia</option>
                                         <option value="Inggris">Inggris</option>
                                         <option value="Arab">Arab</option>
-                                        <option value="Cina">Cina</option>
+                                        <option value="Mandarin">Mandarin</option>
                                         <option value="Jerman">Jerman</option>
                                         <option value="Perancis">Perancis</option>
                                         <option value="Jawa">Jawa</option>
@@ -92,7 +126,7 @@ function Pengaturan({ theme, setTheme, showBell, setShowBell, language, setLangu
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 shadow-sm">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[4px] overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 shadow-sm">
                             <div className="p-5 flex items-center justify-between gap-4">
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-800 dark:text-white">{t('Ikon Notifikasi Navbar')}</h4>
@@ -106,6 +140,7 @@ function Pengaturan({ theme, setTheme, showBell, setShowBell, language, setLangu
                         </div>
                     </section>
 
+
                     {/* Data & Aplikasi */}
                     <section id="data" className="scroll-mt-6">
                         <div className="flex items-center gap-3 mb-6">
@@ -116,13 +151,13 @@ function Pengaturan({ theme, setTheme, showBell, setShowBell, language, setLangu
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 shadow-sm">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[4px] overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 shadow-sm">
                             <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-800 dark:text-white">{t('Reset Preferensi')}</h4>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">{t('Kembalikan semua pengaturan ke default.')}</p>
                                 </div>
-                                <button onClick={() => { setTheme('light'); setShowBell(true); }} className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer">
+                                <button onClick={() => { setTheme('light'); setShowBell(true); }} className="flex items-center justify-center gap-2 px-4 py-2 rounded-[4px] text-xs font-bold border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer">
                                     <RotateCcw size={14} /> {t('Reset')}
                                 </button>
                             </div>
@@ -140,7 +175,7 @@ function Pengaturan({ theme, setTheme, showBell, setShowBell, language, setLangu
                                         alert("Cache lokal berhasil dibersihkan! Aplikasi akan dimuat ulang.");
                                         window.location.reload();
                                     }}
-                                    className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
+                                    className="flex items-center justify-center gap-2 px-4 py-2 rounded-[4px] text-xs font-bold border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
                                 >
                                     <Trash2 size={14} /> {t('Bersihkan')}
                                 </button>
@@ -158,13 +193,13 @@ function Pengaturan({ theme, setTheme, showBell, setShowBell, language, setLangu
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-[4px] overflow-hidden shadow-sm">
                             <div className="p-5 flex items-center justify-between gap-4">
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-800 dark:text-white">{t('Versi Aplikasi')}</h4>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">{t('Versi terbaru yang sedang Anda gunakan.')}</p>
                                 </div>
-                                <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg text-xs font-bold font-mono">v2.1.0-beta</span>
+                                <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-[4px] text-xs font-bold font-mono">v1.0</span>
                             </div>
                         </div>
                     </section>
